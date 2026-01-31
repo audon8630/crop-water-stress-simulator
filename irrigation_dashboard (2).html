@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adaptive Irrigation Scheduler</title>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .control-group {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c3e50;
+            font-size: 0.9em;
+        }
+        
+        .control-group input,
+        .control-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        
+        .control-group input:focus,
+        .control-group select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .dashboard {
+            padding: 30px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-left: 4px solid #3498db;
+            transition: transform 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        
+        .stat-card.danger {
+            border-left-color: #e74c3c;
+        }
+        
+        .stat-card.success {
+            border-left-color: #2ecc71;
+        }
+        
+        .stat-card.warning {
+            border-left-color: #f39c12;
+        }
+        
+        .stat-label {
+            font-size: 0.85em;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        
+        .stat-unit {
+            font-size: 0.6em;
+            color: #95a5a6;
+            margin-left: 5px;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .chart-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+        
+        .irrigation-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        .irrigation-table th {
+            background: #34495e;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .irrigation-table td {
+            padding: 12px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        .irrigation-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 60px;
+            font-size: 1.3em;
+            color: #7f8c8d;
+        }
+        
+        .recommendation-box {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            border-left: 4px solid #4caf50;
+        }
+        
+        .recommendation-box h3 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+        }
+        
+        .recommendation-box p {
+            color: #1b5e20;
+            line-height: 1.6;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Simulation Engine
+        class SoilMoistureSimulator {
+            constructor(params) {
+                this.fieldCapacity = params.fieldCapacity;
+                this.wiltingPoint = params.wiltingPoint;
+                this.saturation = params.saturation;
+                this.soilDepth = params.soilDepth;
+                this.infiltrationRate = params.infiltrationRate;
+                this.drainageCoeff = params.drainageCoeff;
+                this.theta = this.fieldCapacity;
+                this.stressThreshold = params.stressThreshold;
+            }
+
+            getTAW() {
+                return (this.fieldCapacity - this.wiltingPoint) * this.soilDepth;
+            }
+
+            getRAW() {
+                return this.getTAW() * this.stressThreshold;
+            }
+
+            getDepletion() {
+                return (this.fieldCapacity - this.theta) * this.soilDepth;
+            }
+
+            getStress() {
+                const depletion = this.getDepletion();
+                const raw = this.getRAW();
+                if (depletion <= raw) return 0;
+                const taw = this.getTAW();
+                return Math.min((depletion - raw) / (taw - raw), 1);
+            }
+
+            update(precip, et0, irrigation, kc) {
+                const etc = et0 * kc;
+                const totalInput = precip + irrigation;
+                const infiltration = Math.min(totalInput, this.infiltrationRate);
+                const runoff = Math.max(0, totalInput - infiltration);
+
+                let thetaNew = this.theta + infiltration / this.soilDepth;
+
+                const maxET = Math.max(0, (thetaNew - this.wiltingPoint) * this.soilDepth);
+                const actualET = Math.min(etc, maxET);
+                thetaNew -= actualET / this.soilDepth;
+
+                let drainage = 0;
+                if (thetaNew > this.fieldCapacity) {
+                    const excess = (thetaNew - this.fieldCapacity) * this.soilDepth;
+                    drainage = excess * this.drainageCoeff;
+                    thetaNew -= drainage / this.soilDepth;
+                }
+
+                thetaNew = Math.max(this.wiltingPoint, Math.min(this.saturation, thetaNew));
+
+                const result = {
+                    theta: thetaNew,
+                    precipitation: precip,
+                    irrigation: irrigation,
+                    infiltration: infiltration,
+                    runoff: runoff,
+                    etc: etc,
+                    actualET: actualET,
+                    drainage: drainage,
+                    depletion: (this.fieldCapacity - thetaNew) * this.soilDepth,
+                    stress: this.getStress()
+                };
+
+                this.theta = thetaNew;
+                return result;
+            }
+
+            decideIrrigation(forecastPrecip, forecastET, forecastDays) {
+                const depletion = this.getDepletion();
+                const raw = this.getRAW();
+                const stress = this.getStress();
+
+                const expectedDepletion = depletion + forecastET * forecastDays - forecastPrecip;
+
+                if (stress > 0.1) {
+                    return { amount: depletion / 0.85, reason: "Critical stress" };
+                } else if (depletion >= raw * 0.9) {
+                    return { amount: depletion / 0.85, reason: "Approaching threshold" };
+                } else if (expectedDepletion > raw && forecastPrecip < 5) {
+                    const amount = Math.max(0, (expectedDepletion - raw * 0.7) / 0.85);
+                    if (amount > 5) {
+                        return { amount: amount, reason: "Preventive (forecast)" };
+                    }
+                }
+                return { amount: 0, reason: "No irrigation needed" };
+            }
+        }
+
+        // Generate synthetic weather
+        function generateWeather(days) {
+            const weather = [];
+            for (let i = 0; i < days; i++) {
+                const dayOfYear = (90 + i) % 365;
+                const baseET0 = 4 + 2 * Math.sin(2 * Math.PI * (dayOfYear - 80) / 365);
+                const et0 = Math.max(2, Math.min(8, baseET0 + (Math.random() - 0.5)));
+                
+                const precip = Math.random() < 0.15 ? Math.random() * 25 : 0;
+                
+                weather.push({ et0, precip });
+            }
+            return weather;
+        }
+
+        // Get crop coefficient
+        function getCropCoefficient(day, stageDays, kcInitial, kcMid, kcEnd) {
+            const cumDays = [
+                stageDays[0],
+                stageDays[0] + stageDays[1],
+                stageDays[0] + stageDays[1] + stageDays[2],
+                stageDays[0] + stageDays[1] + stageDays[2] + stageDays[3]
+            ];
+
+            if (day < cumDays[0]) return kcInitial;
+            if (day < cumDays[1]) {
+                const progress = (day - cumDays[0]) / stageDays[1];
+                return kcInitial + (kcMid - kcInitial) * progress;
+            }
+            if (day < cumDays[2]) return kcMid;
+            if (day < cumDays[3]) {
+                const progress = (day - cumDays[2]) / stageDays[3];
+                return kcMid + (kcEnd - kcMid) * progress;
+            }
+            return kcEnd;
+        }
+
+        function App() {
+            const [params, setParams] = useState({
+                fieldCapacity: 0.30,
+                wiltingPoint: 0.12,
+                saturation: 0.45,
+                soilDepth: 600,
+                infiltrationRate: 50,
+                drainageCoeff: 0.15,
+                stressThreshold: 0.5,
+                kcInitial: 0.6,
+                kcMid: 1.15,
+                kcEnd: 0.8,
+                simulationDays: 90
+            });
+
+            const [results, setResults] = useState(null);
+            const [isRunning, setIsRunning] = useState(false);
+            
+            // Auto-run simulation on first load
+            useEffect(() => {
+                runSimulation();
+            }, []);
+
+            const chartRefs = {
+                moisture: useRef(null),
+                waterBalance: useRef(null),
+                stress: useRef(null)
+            };
+
+            const chartInstances = useRef({});
+
+            const runSimulation = () => {
+                setIsRunning(true);
+                
+                setTimeout(() => {
+                    const simulator = new SoilMoistureSimulator(params);
+                    const weather = generateWeather(params.simulationDays);
+                    const stageDays = [25, 40, 45, 20];
+                    
+                    const simResults = [];
+                    let totalIrrigation = 0;
+                    let irrigationEvents = 0;
+
+                    for (let day = 0; day < params.simulationDays; day++) {
+                        const kc = getCropCoefficient(day, stageDays, params.kcInitial, params.kcMid, params.kcEnd);
+                        
+                        const forecastPrecip = weather.slice(day, day + 7).reduce((sum, w) => sum + w.precip, 0);
+                        const forecastET = weather.slice(day, day + 7).reduce((sum, w) => sum + w.et0, 0) / 7;
+                        
+                        const decision = simulator.decideIrrigation(forecastPrecip, forecastET, 7);
+                        
+                        if (decision.amount > 0) {
+                            totalIrrigation += decision.amount;
+                            irrigationEvents++;
+                        }
+
+                        const result = simulator.update(
+                            weather[day].precip,
+                            weather[day].et0,
+                            decision.amount,
+                            kc
+                        );
+
+                        simResults.push({
+                            day,
+                            ...result,
+                            kc,
+                            irrigationDecision: decision.amount,
+                            irrigationReason: decision.reason
+                        });
+                    }
+
+                    const totalPrecip = simResults.reduce((sum, r) => sum + r.precipitation, 0);
+                    const totalETC = simResults.reduce((sum, r) => sum + r.etc, 0);
+                    const maxStress = Math.max(...simResults.map(r => r.stress));
+                    const daysWithStress = simResults.filter(r => r.stress > 0.1).length;
+
+                    setResults({
+                        data: simResults,
+                        stats: {
+                            totalIrrigation,
+                            irrigationEvents,
+                            totalPrecip,
+                            totalETC,
+                            maxStress,
+                            daysWithStress,
+                            waterUseEfficiency: totalETC / (totalIrrigation + totalPrecip)
+                        }
+                    });
+                    
+                    console.log('Simulation complete:', {
+                        dataPoints: simResults.length,
+                        irrigationEvents,
+                        totalIrrigation
+                    });
+
+                    setIsRunning(false);
+                }, 100);
+            };
+
+            useEffect(() => {
+                if (results && results.data && results.data.length > 0) {
+                    // Add small delay to ensure DOM is ready
+                    setTimeout(() => {
+                        updateCharts();
+                    }, 100);
+                }
+                
+                // Cleanup function
+                return () => {
+                    Object.values(chartInstances.current).forEach(chart => {
+                        if (chart) {
+                            try {
+                                chart.destroy();
+                            } catch (e) {
+                                // Ignore errors during cleanup
+                            }
+                        }
+                    });
+                };
+            }, [results]);
+
+            const updateCharts = () => {
+                if (!results || !results.data) return;
+                
+                // Destroy existing charts
+                Object.keys(chartInstances.current).forEach(key => {
+                    if (chartInstances.current[key]) {
+                        try {
+                            chartInstances.current[key].destroy();
+                        } catch (e) {
+                            console.error('Error destroying chart:', e);
+                        }
+                        chartInstances.current[key] = null;
+                    }
+                });
+
+                const days = results.data.map(r => r.day);
+
+                // Moisture Chart
+                if (chartRefs.moisture.current) {
+                    const ctx = chartRefs.moisture.current.getContext('2d');
+                    chartInstances.current.moisture = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: days,
+                            datasets: [
+                                {
+                                    label: 'Soil Moisture',
+                                    data: results.data.map(r => r.theta),
+                                    borderColor: '#3498db',
+                                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                                    fill: true,
+                                    tension: 0.4,
+                                    pointRadius: 0,
+                                    borderWidth: 2
+                                },
+                                {
+                                    label: 'Field Capacity',
+                                    data: Array(days.length).fill(params.fieldCapacity),
+                                    borderColor: '#2ecc71',
+                                    borderDash: [5, 5],
+                                    pointRadius: 0,
+                                    borderWidth: 2
+                                },
+                                {
+                                    label: 'Wilting Point',
+                                    data: Array(days.length).fill(params.wiltingPoint),
+                                    borderColor: '#e74c3c',
+                                    borderDash: [5, 5],
+                                    pointRadius: 0,
+                                    borderWidth: 2
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { 
+                                    display: true,
+                                    position: 'top'
+                                },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    title: { display: true, text: 'Day' }
+                                },
+                                y: {
+                                    beginAtZero: false,
+                                    title: { display: true, text: 'Volumetric Water Content' }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Water Balance Chart
+                if (chartRefs.waterBalance.current) {
+                    const ctx = chartRefs.waterBalance.current.getContext('2d');
+                    chartInstances.current.waterBalance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: days,
+                            datasets: [
+                                {
+                                    label: 'Precipitation',
+                                    data: results.data.map(r => r.precipitation),
+                                    backgroundColor: 'rgba(52, 152, 219, 0.7)'
+                                },
+                                {
+                                    label: 'Irrigation',
+                                    data: results.data.map(r => r.irrigation),
+                                    backgroundColor: 'rgba(46, 204, 113, 0.7)'
+                                },
+                                {
+                                    label: 'Crop ET',
+                                    data: results.data.map(r => -r.etc),
+                                    backgroundColor: 'rgba(231, 76, 60, 0.7)'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { 
+                                    display: true,
+                                    position: 'top'
+                                },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    title: { display: true, text: 'Day' }
+                                },
+                                y: {
+                                    title: { display: true, text: 'Water (mm)' }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Stress Chart
+                if (chartRefs.stress.current) {
+                    const ctx = chartRefs.stress.current.getContext('2d');
+                    chartInstances.current.stress = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: days,
+                            datasets: [
+                                {
+                                    label: 'Stress Level',
+                                    data: results.data.map(r => r.stress),
+                                    borderColor: '#e74c3c',
+                                    backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                                    fill: true,
+                                    tension: 0.4,
+                                    pointRadius: 0,
+                                    borderWidth: 2
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    title: { display: true, text: 'Day' }
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    max: 1,
+                                    title: { display: true, text: 'Stress (0-1)' }
+                                }
+                            }
+                        }
+                    });
+                }
+            };
+
+            const irrigationEvents = results ? 
+                results.data.filter(r => r.irrigation > 0) : [];
+
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>🌾 Adaptive Irrigation Scheduler</h1>
+                        <p>Field-Scale Crop Water Stress Simulation</p>
+                    </div>
+
+                    <div className="controls">
+                        <div className="control-group">
+                            <label>Field Capacity</label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                value={params.fieldCapacity}
+                                onChange={e => setParams({...params, fieldCapacity: parseFloat(e.target.value)})}
+                            />
+                        </div>
+                        <div className="control-group">
+                            <label>Wilting Point</label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                value={params.wiltingPoint}
+                                onChange={e => setParams({...params, wiltingPoint: parseFloat(e.target.value)})}
+                            />
+                        </div>
+                        <div className="control-group">
+                            <label>Soil Depth (mm)</label>
+                            <input 
+                                type="number" 
+                                step="50" 
+                                value={params.soilDepth}
+                                onChange={e => setParams({...params, soilDepth: parseFloat(e.target.value)})}
+                            />
+                        </div>
+                        <div className="control-group">
+                            <label>Stress Threshold (MAD)</label>
+                            <input 
+                                type="number" 
+                                step="0.05" 
+                                value={params.stressThreshold}
+                                onChange={e => setParams({...params, stressThreshold: parseFloat(e.target.value)})}
+                            />
+                        </div>
+                        <div className="control-group">
+                            <label>Simulation Days</label>
+                            <input 
+                                type="number" 
+                                step="10" 
+                                value={params.simulationDays}
+                                onChange={e => setParams({...params, simulationDays: parseInt(e.target.value)})}
+                            />
+                        </div>
+                        <div className="control-group" style={{display: 'flex', alignItems: 'flex-end'}}>
+                            <button className="btn" onClick={runSimulation} disabled={isRunning}>
+                                {isRunning ? '⏳ Running...' : '▶ Run Simulation'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {isRunning && (
+                        <div className="loading">
+                            ⏳ Running simulation...
+                        </div>
+                    )}
+
+                    {results && !isRunning && (
+                        <div className="dashboard">
+                            <div className="stats-grid">
+                                <div className="stat-card success">
+                                    <div className="stat-label">Total Irrigation</div>
+                                    <div className="stat-value">
+                                        {results.stats.totalIrrigation.toFixed(1)}
+                                        <span className="stat-unit">mm</span>
+                                    </div>
+                                </div>
+                                <div className="stat-card">
+                                    <div className="stat-label">Irrigation Events</div>
+                                    <div className="stat-value">{results.stats.irrigationEvents}</div>
+                                </div>
+                                <div className="stat-card warning">
+                                    <div className="stat-label">Max Stress</div>
+                                    <div className="stat-value">{results.stats.maxStress.toFixed(3)}</div>
+                                </div>
+                                <div className="stat-card danger">
+                                    <div className="stat-label">Days with Stress</div>
+                                    <div className="stat-value">{results.stats.daysWithStress}</div>
+                                </div>
+                                <div className="stat-card success">
+                                    <div className="stat-label">Water Use Efficiency</div>
+                                    <div className="stat-value">{results.stats.waterUseEfficiency.toFixed(2)}</div>
+                                </div>
+                                <div className="stat-card">
+                                    <div className="stat-label">Total Precipitation</div>
+                                    <div className="stat-value">
+                                        {results.stats.totalPrecip.toFixed(1)}
+                                        <span className="stat-unit">mm</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {irrigationEvents.length > 0 && (
+                                <div className="recommendation-box">
+                                    <h3>💧 Next Irrigation Recommendation</h3>
+                                    <p>
+                                        <strong>Day {irrigationEvents[0].day}:</strong> Apply{' '}
+                                        <strong>{irrigationEvents[0].irrigation.toFixed(1)} mm</strong> of water.
+                                        <br />
+                                        <em>Reason: {irrigationEvents[0].irrigationReason}</em>
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="chart-container">
+                                <div className="chart-title">📊 Soil Moisture Dynamics</div>
+                                <div style={{height: '300px'}}>
+                                    <canvas ref={chartRefs.moisture}></canvas>
+                                </div>
+                            </div>
+
+                            <div className="chart-container">
+                                <div className="chart-title">💧 Water Balance Components</div>
+                                <div style={{height: '300px'}}>
+                                    <canvas ref={chartRefs.waterBalance}></canvas>
+                                </div>
+                            </div>
+
+                            <div className="chart-container">
+                                <div className="chart-title">⚠️ Crop Water Stress</div>
+                                <div style={{height: '250px'}}>
+                                    <canvas ref={chartRefs.stress}></canvas>
+                                </div>
+                            </div>
+
+                            <div className="chart-container">
+                                <div className="chart-title">📅 Irrigation Schedule</div>
+                                <table className="irrigation-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Day</th>
+                                            <th>Amount (mm)</th>
+                                            <th>Soil Depletion</th>
+                                            <th>Stress</th>
+                                            <th>Reason</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {irrigationEvents.map((event, idx) => (
+                                            <tr key={idx}>
+                                                <td>{event.day}</td>
+                                                <td><strong>{event.irrigation.toFixed(1)}</strong></td>
+                                                <td>{event.depletion.toFixed(1)} mm</td>
+                                                <td>
+                                                    <span className={`badge ${
+                                                        event.stress > 0.3 ? 'badge-danger' :
+                                                        event.stress > 0.1 ? 'badge-warning' :
+                                                        'badge-success'
+                                                    }`}>
+                                                        {event.stress.toFixed(3)}
+                                                    </span>
+                                                </td>
+                                                <td>{event.irrigationReason}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
