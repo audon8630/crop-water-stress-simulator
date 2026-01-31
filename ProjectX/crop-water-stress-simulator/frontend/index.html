@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Crop Water Stress Simulator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+    select, input, button {
+      padding: 6px;
+    }
+    canvas {
+      background: #fff;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .stats {
+      margin-top: 10px;
+      text-align: center;
+      background: #eaf0ff;
+      padding: 10px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Crop Water Stress Simulator</h1>
+
+<div class="controls">
+  <select id="soil">
+    <option value="loam">Loam</option>
+    <option value="sandy">Sandy</option>
+    <option value="clay">Clay</option>
+  </select>
+
+  <select id="crop">
+    <option value="wheat">Wheat</option>
+    <option value="maize">Maize</option>
+  </select>
+
+  <input type="number" id="days" value="60" min="1">
+  <input type="number" id="area" value="1000" min="1">
+
+  <button onclick="run()">Run Simulation</button>
+</div>
+
+<canvas id="chart"></canvas>
+
+<div class="stats" id="stats"></div>
+
+<script>
+let chart;
+
+async function run() {
+  const payload = {
+    soilType: document.getElementById('soil').value,
+    cropType: document.getElementById('crop').value,
+    nDays: Number(document.getElementById('days').value),
+    area: Number(document.getElementById('area').value)
+  };
+
+  const res = await fetch("http://localhost:3000/simulate", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+  const r = data.result;
+
+  document.getElementById("stats").innerHTML =
+    `Total irrigation: <b>${r.stats.totalIrrigationMm.toFixed(1)} mm</b> |
+     Stress days: <b>${r.stats.stressDays}</b>`;
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(document.getElementById("chart"), {
+    type: 'line',
+    data: {
+      labels: r.days,
+      datasets: [
+        {
+          label: 'Soil Moisture (mm)',
+          data: r.soilWater,
+          borderWidth: 2
+        },
+        {
+          label: 'Stress Threshold',
+          data: r.days.map(() => r.stats.stressThreshold),
+          borderDash: [5,5],
+          borderWidth: 1
+        }
+      ]
+    }
+  });
+}
+
+run();
+</script>
+
+</body>
+</html>
