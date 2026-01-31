@@ -1,0 +1,4 @@
+0000000000000000000000000000000000000000 502e142f68b32d5ff826214c8048e59781691e81 Akshat Upadhyay <akshatupadhyay2006@gmail.com> 1769098065 +0530	clone: from https://github.com/audon8630/crop-water-stress-simulator.git
+502e142f68b32d5ff826214c8048e59781691e81 f45912f8b0087f5f501fb7913fd65bec2f0cd0aa Akshat Upadhyay <akshatupadhyay2006@gmail.com> 1769098853 +0530	commit: Project setup: soil moisture model and irrigation scheduler
+f45912f8b0087f5f501fb7913fd65bec2f0cd0aa aaf27860f109014f7fade848e051e09e21afcd00 Akshat Upadhyay <akshatupadhyay2006@gmail.com> 1769099148 +0530	commit: Initial backend: soil moisture model and irrigation scheduler
+aaf27860f109014f7fade848e051e09e21afcd00 102a9b3a4f92ab6aafad242f03f7baf2ef5cd3e4 Akshat Upadhyay <akshatupadhyay2006@gmail.com> 1769099387 +0530	commit: Improve README with problem statement and methodology
